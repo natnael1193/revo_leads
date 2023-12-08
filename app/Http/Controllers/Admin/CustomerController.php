@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\InformationSource;
 use App\Models\Leads;
+use App\Models\PropertyType;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Intervention\Image\Facades\Image;
 
@@ -15,7 +18,11 @@ class CustomerController extends Controller
     public function index()
     {
         $paginate = request()->query('paginate');
-        $data = Leads::simplepaginate($paginate);
+        $data = Leads::where('created_at', Carbon::today())->simplepaginate($paginate);
+        foreach($data as $item){
+            $item['information_source'] = InformationSource::where('id', $item['information_source'])->first();
+            $item['property_type'] = PropertyType::where('id', $item['property_type'])->first();
+        }
         return response()->json([
             "message" => "Get all leads",
             "data" => $data
@@ -78,13 +85,13 @@ class CustomerController extends Controller
 
         if ($check_phone_three) {
             return response()->json([
-                "message" => 'The Phone three'. " has already been taken."
+                "message" => 'The Phone three' . " has already been taken."
             ], 422);
         }
 
         if ($check_phone_four) {
             return response()->json([
-                "message" => 'The Phone four'. " has already been taken."
+                "message" => 'The Phone four' . " has already been taken."
             ], 422);
         }
 
@@ -115,7 +122,12 @@ class CustomerController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $leads = Leads::findOrFail($id);
+
+        return response()->json([
+            "message" => "Lead get successfully",
+            "data" => $leads
+        ]);
     }
 
     /**
@@ -131,7 +143,32 @@ class CustomerController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $leads = Leads::findOrFail($id);
+        $validate_data = $request->validate([
+            "name" => [''],
+            "phone_one" => ['unique:leads'],
+            "phone_two" => ['unique:leads'],
+            "phone_three" => ['unique:leads'],
+            "phone_four" => ['unique:leads'],
+            "email" => [''],
+            "information_source" => [''],
+            "property_type" => [''],
+            "youtube" => [''],
+            "facebook" => [''],
+            "instagram" => [''],
+            "website" => [''],
+            "whatsapp" => [''],
+            "telegram" => [''],
+            "linkedin" => [''],
+            "tiktok" => [''],
+        ]);
+
+
+        $leads->update($validate_data);
+        return response()->json([
+            "message" => "Leads updated successfully",
+            "data" => $leads
+        ]);
     }
 
     /**
@@ -141,4 +178,46 @@ class CustomerController extends Controller
     {
         //
     }
+
+        public function updateCustomer(Request $request, string $id)
+        {
+            $user['id'] = ["user_id" => auth()->user()->id];
+            $leads = Leads::findOrFail($id);
+            $validate_data = $request->validate([
+                "name" => [''],
+            "phone_one" => [''],
+            "phone_two" => [''],
+            "phone_three" => [''],
+            "phone_four" => [''],
+            "email" => [''],
+            "information_source" => [''],
+            "property_type" => [''],
+            "youtube" => [''],
+            "facebook" => [''],
+            "instagram" => [''],
+            "website" => [''],
+            "whatsapp" => [''],
+            "telegram" => [''],
+            "linkedin" => [''],
+            "tiktok" => [''],
+        ]);
+
+            if (request('image')) {
+                $imagePath = request('image')->store('uploads', 'public');
+                $image = Image::make(public_path("storage/{$imagePath}"));
+                $image->save();
+                $imageArray = ['image' => $imagePath];
+                $data = $leads->update(array_merge($validate_data, $imageArray));
+                return response()->json([
+                    "message" => "Registered Successfully",
+                "data" => $data,
+            ]);
+            }
+
+            $leads->update($validate_data);
+            return response()->json([
+                "message" => "Leads updated successfully",
+            "data" => $leads
+        ]);
+        }
 }
